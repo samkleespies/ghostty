@@ -425,12 +425,12 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
         // layout pass — relative shifts would accumulate.
         if let closeBtn = standardWindowButton(.closeButton) {
             let y = round((target - closeBtn.frame.height) / 2) - 1
-            closeBtn.setFrameOrigin(NSPoint(x: 7, y: y))
+            closeBtn.setFrameOrigin(NSPoint(x: 8, y: y))
             if let miniBtn = standardWindowButton(.miniaturizeButton) {
-                miniBtn.setFrameOrigin(NSPoint(x: 27, y: y))
+                miniBtn.setFrameOrigin(NSPoint(x: 28, y: y))
             }
             if let zoomBtn = standardWindowButton(.zoomButton) {
-                zoomBtn.setFrameOrigin(NSPoint(x: 47, y: y))
+                zoomBtn.setFrameOrigin(NSPoint(x: 48, y: y))
             }
         }
 
@@ -530,9 +530,9 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
         // Hide the window drag handle.
         windowDragHandle?.isHidden = true
 
-        // Re-enable the main toolbar title
+        // Keep the toolbar title hidden in single-tab mode for a clean titlebar.
         if let toolbar = toolbar as? TerminalToolbar {
-            toolbar.titleIsHidden = false
+            toolbar.titleIsHidden = true
         }
     }
 
