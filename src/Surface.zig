@@ -991,6 +991,19 @@ pub fn handleMessage(self: *Surface, msg: Message) !void {
             }, .unlocked);
         },
 
+        .titlebar_color => |rgb| {
+            _ = try self.rt_app.performAction(
+                .{ .surface = self },
+                .color_change,
+                .{
+                    .kind = .titlebar,
+                    .r = rgb[0],
+                    .g = rgb[1],
+                    .b = rgb[2],
+                },
+            );
+        },
+
         .color_change => |change| color_change: {
             // Notify our apprt, but don't send a mode 2031 DSR report
             // because VT sequences were used to change the color.

@@ -123,6 +123,11 @@ extension Ghostty {
         /// dynamically updated. Otherwise, the background color is the default background color.
         @Published private(set) var backgroundColor: Color? = nil
 
+        /// The background color of the top row of the terminal grid, reported by the renderer.
+        /// Used for dynamic titlebar color matching when TUI apps change cell backgrounds.
+        /// Stored as NSColor with explicit sRGB to avoid color space conversion artifacts.
+        @Published private(set) var titlebarColor: NSColor? = nil
+
         /// True when the bell is active. This is set inactive on focus or event.
         @Published private(set) var bell: Bool = false
 
@@ -728,8 +733,18 @@ extension Ghostty {
                     self?.backgroundColor = change.color
                 }
 
+            case .titlebar:
+                // Create NSColor directly from raw RGB to avoid SwiftUI Color
+                // space conversion artifacts that cause subtle color mismatches.
+                let r = CGFloat(change.r) / 255.0
+                let g = CGFloat(change.g) / 255.0
+                let b = CGFloat(change.b) / 255.0
+                let nsColor = NSColor(colorSpace: .sRGB, components: [r, g, b, 1.0], count: 4)
+                DispatchQueue.main.async { [weak self] in
+                    self?.titlebarColor = nsColor
+                }
+
             default:
-                // We don't do anything for the other colors yet.
                 break
             }
         }

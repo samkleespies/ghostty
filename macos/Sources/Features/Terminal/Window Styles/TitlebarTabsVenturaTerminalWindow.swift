@@ -23,6 +23,12 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
             guard let titlebarContainer else { return }
             titlebarContainer.wantsLayer = true
             titlebarContainer.layer?.backgroundColor = titlebarColor.cgColor
+
+            // Remove any system vibrancy/material effects that composite
+            // on top of our background color, causing subtle mismatches.
+            for effectView in titlebarContainer.descendants(withClassName: "NSVisualEffectView") {
+                effectView.isHidden = true
+            }
         }
     }
 
@@ -184,8 +190,15 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
         let themeChanged = isLightTheme != OSColor(surfaceConfig.backgroundColor).isLightColor
         isLightTheme = OSColor(surfaceConfig.backgroundColor).isLightColor
 
-        // Update our titlebar color
-        if let preferredBackgroundColor {
+        // Update our titlebar color. Prefer the renderer-reported top-row
+        // color (from TUI apps that paint cell backgrounds) over the static
+        // config/OSC background color. Also make the titlebar transparent
+        // so no system material/vibrancy composites on top of our color.
+        titlebarAppearsTransparent = true
+        if let surface = terminalController?.focusedSurface,
+           let topRowColor = surface.titlebarColor {
+            titlebarColor = topRowColor
+        } else if let preferredBackgroundColor {
             titlebarColor = preferredBackgroundColor
         } else {
             titlebarColor = derivedConfig.backgroundColor.withAlphaComponent(derivedConfig.backgroundOpacity)

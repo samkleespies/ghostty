@@ -119,6 +119,10 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
         /// shaders to update their state.
         custom_shader_focused_changed: bool = false,
 
+        /// Cache of the last titlebar color sent to the apprt, to avoid
+        /// sending duplicate messages every frame.
+        last_titlebar_color: ?[3]u8 = null,
+
         /// The most recent scrollbar state. We use this as a cache to
         /// determine if we need to notify the apprt that there was a
         /// scrollbar change.
@@ -1342,6 +1346,21 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                     comptime assert(@TypeOf(err) == error{OutOfMemory});
                     log.warn("error rebuilding GPU cells err={}", .{err});
                 };
+
+                // Report the top-row background color to the apprt for
+                // dynamic titlebar color matching. Only send when changed.
+                if (self.cells.size.columns > 0 and self.cells.size.rows > 0) {
+                    const bg = self.cells.bgCell(0, 0).*;
+                    const rgb = [3]u8{ bg[0], bg[1], bg[2] };
+                    if (self.last_titlebar_color == null or
+                        !std.mem.eql(u8, &self.last_titlebar_color.?, &rgb))
+                    {
+                        self.last_titlebar_color = rgb;
+                        _ = self.surface_mailbox.push(.{
+                            .titlebar_color = rgb,
+                        }, .{ .forever = {} });
+                    }
+                }
 
                 // The scrollbar is only emitted during draws so we also
                 // check the scrollbar cache here and update if needed.

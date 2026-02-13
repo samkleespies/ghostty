@@ -9,11 +9,15 @@ extension Ghostty.Action {
     struct ColorChange {
         let kind: Kind
         let color: Color
+        let r: UInt8
+        let g: UInt8
+        let b: UInt8
 
         enum Kind {
             case foreground
             case background
             case cursor
+            case titlebar
             case palette(index: UInt8)
         }
 
@@ -25,10 +29,15 @@ extension Ghostty.Action {
                 self.kind = .background
             case GHOSTTY_ACTION_COLOR_KIND_CURSOR:
                 self.kind = .cursor
+            case GHOSTTY_ACTION_COLOR_KIND_TITLEBAR:
+                self.kind = .titlebar
             default:
                 self.kind = .palette(index: UInt8(c.kind.rawValue))
             }
 
+            self.r = c.r
+            self.g = c.g
+            self.b = c.b
             self.color = Color(red: Double(c.r) / 255, green: Double(c.g) / 255, blue: Double(c.b) / 255)
         }
     }

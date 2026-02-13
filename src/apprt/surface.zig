@@ -108,6 +108,10 @@ pub const Message = union(enum) {
     /// Selected search index change
     search_selected: ?usize,
 
+    /// The background color of the top row of the terminal grid changed.
+    /// Used for dynamic titlebar color matching.
+    titlebar_color: [3]u8,
+
     pub const ReportTitleStyle = enum {
         csi_21_t,
 

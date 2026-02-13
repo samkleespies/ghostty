@@ -774,6 +774,10 @@ pub const ColorKind = enum(c_int) {
     background = -2,
     cursor = -3,
 
+    // The background color of the top row of the terminal grid,
+    // used for dynamic titlebar color matching.
+    titlebar = -4,
+
     // 0+ values indicate a palette index
     _,
 };

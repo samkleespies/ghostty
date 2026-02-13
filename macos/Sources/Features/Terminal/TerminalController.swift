@@ -1337,6 +1337,9 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         focusedSurface.$backgroundColor
             .sink { [weak self, weak focusedSurface] _ in self?.syncAppearanceOnPropertyChange(focusedSurface) }
             .store(in: &surfaceAppearanceCancellables)
+        focusedSurface.$titlebarColor
+            .sink { [weak self, weak focusedSurface] _ in self?.syncAppearanceOnPropertyChange(focusedSurface) }
+            .store(in: &surfaceAppearanceCancellables)
     }
 
     private func syncAppearanceOnPropertyChange(_ surface: Ghostty.SurfaceView?) {
