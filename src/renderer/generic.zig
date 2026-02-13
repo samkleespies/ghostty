@@ -43,6 +43,40 @@ const DisplayLink = switch (builtin.os.tag) {
 
 const log = std.log.scoped(.generic_renderer);
 
+/// Convert sRGB byte values to Display P3 byte values using the same
+/// D50-adapted matrices as shaders.metal. This replicates the shader's
+/// sRGB→P3 conversion on the CPU for titlebar color matching.
+fn srgbToDisplayP3(rgb: [3]u8) [3]u8 {
+    // Pre-composed sRGB→Display P3 matrix (XYZ_DP3 * sRGB_XYZ)
+    // from shaders.metal lines 36-50.
+    const m = [3][3]f32{
+        .{ 0.8225454, 0.1773585, 0.0000209 },
+        .{ 0.0331760, 0.9668829, -0.0000707 },
+        .{ 0.0171495, 0.0724234, 0.9108230 },
+    };
+
+    const lin = [3]f32{
+        linearize(@as(f32, @floatFromInt(rgb[0])) / 255.0),
+        linearize(@as(f32, @floatFromInt(rgb[1])) / 255.0),
+        linearize(@as(f32, @floatFromInt(rgb[2])) / 255.0),
+    };
+
+    var out: [3]u8 = undefined;
+    inline for (0..3) |i| {
+        const v = m[i][0] * lin[0] + m[i][1] * lin[1] + m[i][2] * lin[2];
+        out[i] = @intFromFloat(@round(@min(255.0, @max(0.0, unlinearize(@max(0, v)) * 255.0))));
+    }
+    return out;
+}
+
+fn linearize(v: f32) f32 {
+    return if (v <= 0.04045) v / 12.92 else std.math.pow(f32, (v + 0.055) / 1.055, 2.4);
+}
+
+fn unlinearize(v: f32) f32 {
+    return if (v <= 0.0031308) v * 12.92 else std.math.pow(f32, v, 1.0 / 2.4) * 1.055 - 0.055;
+}
+
 /// Create a renderer type with the provided graphics API wrapper.
 ///
 /// The graphics API wrapper must provide the interface outlined below.
@@ -1349,9 +1383,16 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
 
                 // Report the top-row background color to the apprt for
                 // dynamic titlebar color matching. Only send when changed.
+                // When window-colorspace is sRGB the shader converts to
+                // Display P3 on the GPU, so we replicate that here so the
+                // apprt always receives P3-ready values.
                 if (self.cells.size.columns > 0 and self.cells.size.rows > 0) {
                     const bg = self.cells.bgCell(0, 0).*;
-                    const rgb = [3]u8{ bg[0], bg[1], bg[2] };
+                    const raw = [3]u8{ bg[0], bg[1], bg[2] };
+                    const rgb = if (!self.uniforms.bools.use_display_p3)
+                        srgbToDisplayP3(raw)
+                    else
+                        raw;
                     if (self.last_titlebar_color == null or
                         !std.mem.eql(u8, &self.last_titlebar_color.?, &rgb))
                     {

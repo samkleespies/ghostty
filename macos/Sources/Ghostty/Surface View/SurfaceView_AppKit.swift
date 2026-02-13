@@ -125,7 +125,7 @@ extension Ghostty {
 
         /// The background color of the top row of the terminal grid, reported by the renderer.
         /// Used for dynamic titlebar color matching when TUI apps change cell backgrounds.
-        /// Stored as NSColor with explicit sRGB to avoid color space conversion artifacts.
+        /// Stored as NSColor in Display P3 to match the Metal surface color space.
         @Published private(set) var titlebarColor: NSColor? = nil
 
         /// True when the bell is active. This is set inactive on focus or event.
@@ -734,12 +734,14 @@ extension Ghostty {
                 }
 
             case .titlebar:
-                // Create NSColor directly from raw RGB to avoid SwiftUI Color
-                // space conversion artifacts that cause subtle color mismatches.
+                // The renderer sends Display P3-ready values: either raw
+                // bytes (when window-colorspace=display-p3) or sRGB→P3
+                // converted bytes (when window-colorspace=srgb). Create
+                // the NSColor in Display P3 to match the Metal surface.
                 let r = CGFloat(change.r) / 255.0
                 let g = CGFloat(change.g) / 255.0
                 let b = CGFloat(change.b) / 255.0
-                let nsColor = NSColor(colorSpace: .sRGB, components: [r, g, b, 1.0], count: 4)
+                let nsColor = NSColor(colorSpace: .displayP3, components: [r, g, b, 1.0], count: 4)
                 DispatchQueue.main.async { [weak self] in
                     self?.titlebarColor = nsColor
                 }
