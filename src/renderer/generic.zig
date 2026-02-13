@@ -537,6 +537,7 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
             font_shaping_break: configpkg.FontShapingBreak,
             cursor_color: ?configpkg.Config.TerminalColor,
             cursor_opacity: f64,
+            cursor_style_unfocused: configpkg.Config.CursorStyleUnfocused,
             cursor_text: ?configpkg.Config.TerminalColor,
             background: terminal.color.RGB,
             background_opacity: f64,
@@ -609,6 +610,7 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                     .cursor_color = config.@"cursor-color",
                     .cursor_text = config.@"cursor-text",
                     .cursor_opacity = @max(0, @min(1, config.@"cursor-opacity")),
+                    .cursor_style_unfocused = config.@"cursor-style-unfocused",
 
                     .background = config.background.toTerminalRGB(),
                     .foreground = config.foreground.toTerminalRGB(),
@@ -1330,6 +1332,7 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                         .preedit = critical.preedit != null,
                         .focused = self.focused,
                         .blink_visible = cursor_blink_visible,
+                        .unfocused_style = self.config.cursor_style_unfocused.toRendererStyle(),
                     }),
                     &critical.links,
                 ) catch |err| {

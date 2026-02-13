@@ -29,6 +29,7 @@ pub const StyleOptions = struct {
     preedit: bool = false,
     focused: bool = false,
     blink_visible: bool = false,
+    unfocused_style: ?Style = .block_hollow,
 };
 
 /// Returns the cursor style to use for the current render state or null
@@ -55,9 +56,8 @@ pub fn style(
     // If the cursor is explicitly not visible by terminal mode, we don't render.
     if (!state.cursor.visible) return null;
 
-    // If we're not focused, our cursor is always visible so that
-    // we can show the hollow box.
-    if (!opts.focused) return .block_hollow;
+    // If we're not focused, use the configured unfocused style (or hide).
+    if (!opts.focused) return opts.unfocused_style;
 
     // If the cursor is blinking and our blink state is not visible,
     // then we don't show the cursor.

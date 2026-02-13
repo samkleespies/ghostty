@@ -10,6 +10,14 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
     /// be updated whenever the window background color or surrounding elements changes.
     fileprivate var isLightTheme: Bool = false
 
+    // MARK: Compact Titlebar
+
+    /// Target height for the compact titlebar (down from ~38pt default with .unifiedCompact toolbar).
+    private static let compactTitlebarHeight: CGFloat = 28
+
+    /// Re-entrancy guard to prevent recursive layout calls from forceTitlebarHeight().
+    private var isAdjustingTitlebar = false
+
     lazy var titlebarColor: NSColor = backgroundColor {
         didSet {
             guard let titlebarContainer else { return }
@@ -30,6 +38,28 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
     }
 
     // MARK: NSWindow
+
+    override func contentRect(forFrameRect frameRect: NSRect) -> NSRect {
+        var rect = super.contentRect(forFrameRect: frameRect)
+        guard titlebarTabs else { return rect }
+        let systemTitlebar = frameRect.height - rect.height
+        let excess = systemTitlebar - Self.compactTitlebarHeight
+        if excess > 0 {
+            rect.size.height += excess
+        }
+        return rect
+    }
+
+    override func frameRect(forContentRect contentRect: NSRect) -> NSRect {
+        var rect = super.frameRect(forContentRect: contentRect)
+        guard titlebarTabs else { return rect }
+        let systemTitlebar = rect.height - contentRect.height
+        let excess = systemTitlebar - Self.compactTitlebarHeight
+        if excess > 0 {
+            rect.size.height -= excess
+        }
+        return rect
+    }
 
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -75,6 +105,8 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
 		super.layoutIfNeeded()
 
 		guard titlebarTabs else { return }
+
+		forceTitlebarHeight()
 
 		// We need to be aggressive with this, and it has to be done as well in `update`,
 		// otherwise things can get out of sync and flickering can occur.
@@ -320,7 +352,6 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
     // isn't possible.
     func generateToolbar() {
         let terminalToolbar = TerminalToolbar(identifier: "Toolbar")
-
         toolbar = terminalToolbar
         toolbarStyle = .unifiedCompact
         if let resetZoomItem = terminalToolbar.items.first(where: { $0.itemIdentifier == .resetZoom }) {
@@ -329,6 +360,110 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
             resetZoomItem.view!.widthAnchor.constraint(equalToConstant: 22).isActive = true
             resetZoomItem.view!.heightAnchor.constraint(equalToConstant: 20).isActive = true
         }
+    }
+
+    /// Shrink the NSTitlebarContainerView to the compact height, clip it,
+    /// and re-center the traffic-light buttons in the smaller space.
+    private func forceTitlebarHeight() {
+        guard !isAdjustingTitlebar else { return }
+        guard let container = titlebarContainer else { return }
+        let target = Self.compactTitlebarHeight
+
+        isAdjustingTitlebar = true
+        defer { isAdjustingTitlebar = false }
+
+        // Shrink container if taller than target
+        if container.frame.size.height > target {
+            let diff = container.frame.size.height - target
+            var f = container.frame
+            f.size.height = target
+            f.origin.y += diff
+            container.frame = f
+        }
+
+        // Clip so the 38pt toolbar inside doesn't bleed
+        container.wantsLayer = true
+        container.layer?.masksToBounds = true
+
+        // Center the toolbar content vertically within the clipped container.
+        // The 38pt NSToolbarView sits at y=-10 inside the container, which clips
+        // all 10pt from the bottom. Instead, shift it up so the clip is symmetric
+        // (5pt from each side), centering the tab text and title.
+        for titlebarView in container.subviews where titlebarView.className == "NSTitlebarView" {
+            for toolbarView in titlebarView.subviews where toolbarView.className == "NSToolbarView" {
+                let excess = toolbarView.frame.height - target
+                if excess > 0 {
+                    let centeredY = -(excess / 2)
+                    if toolbarView.frame.origin.y != centeredY {
+                        var f = toolbarView.frame
+                        f.origin.y = centeredY
+                        toolbarView.frame = f
+                    }
+                }
+
+                // Hide the overflow/"clipped items" indicator that appears at
+                // the bottom of the clipped toolbar region.
+                toolbarView.subviews
+                    .filter { $0.className == "NSToolbarClippedItemsIndicatorViewer" }
+                    .forEach { $0.isHidden = true }
+            }
+
+            // Shrink the NSTitlebarView to match the container bounds. This
+            // prevents hit-testing in the clipped toolbar region (layer
+            // masksToBounds only clips rendering, not AppKit hit-testing).
+            if titlebarView.frame.size.height > target {
+                var f = titlebarView.frame
+                f.size.height = target
+                titlebarView.frame = f
+            }
+            titlebarView.wantsLayer = true
+            titlebarView.layer?.masksToBounds = true
+        }
+
+        // Position traffic lights to match standard titlebar placement.
+        // Use absolute x positions (7, 27, 47) since this runs on every
+        // layout pass — relative shifts would accumulate.
+        if let closeBtn = standardWindowButton(.closeButton) {
+            let y = round((target - closeBtn.frame.height) / 2) - 1
+            closeBtn.setFrameOrigin(NSPoint(x: 7, y: y))
+            if let miniBtn = standardWindowButton(.miniaturizeButton) {
+                miniBtn.setFrameOrigin(NSPoint(x: 27, y: y))
+            }
+            if let zoomBtn = standardWindowButton(.zoomButton) {
+                zoomBtn.setFrameOrigin(NSPoint(x: 47, y: y))
+            }
+        }
+
+        // Expand the content view to fill the gap left by the shrunk titlebar.
+        // AppKit sizes the content view for the original ~38pt titlebar, so with
+        // a 28pt titlebar there's a 10pt gap we need to close.
+        let expectedContentHeight = frame.height - target
+        if let cv = contentView, cv.frame.height < expectedContentHeight {
+            var cvFrame = cv.frame
+            cvFrame.size.height = expectedContentHeight
+            cv.frame = cvFrame
+        }
+
+        // Remove separator between titlebar and content
+        titlebarSeparatorStyle = .none
+        for v in container.descendants(withClassName: "NSTitlebarSeparatorView") {
+            v.isHidden = true
+        }
+
+        // After resizing, AppKit recalculates safe area insets based on
+        // the original 38pt toolbar. The terminal's SwiftUI hosting view
+        // respects this, leaving a gap at the top. Counteract it here
+        // (async to avoid SIGABRT from setting insets during layout).
+        if let hostingView = contentView?.subviews.first {
+            let systemTop = hostingView.safeAreaInsets.top
+            if systemTop > 0 {
+                DispatchQueue.main.async {
+                    hostingView.additionalSafeAreaInsets = NSEdgeInsets(
+                        top: -systemTop, left: 0, bottom: 0, right: 0)
+                }
+            }
+        }
+
     }
 
     // For titlebar tabs, we want to hide the separator view so that we get rid
@@ -432,8 +567,8 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
             accessoryClipView.translatesAutoresizingMaskIntoConstraints = false
             accessoryClipView.leftAnchor.constraint(equalTo: windowButtonsBackdrop.rightAnchor).isActive = true
             accessoryClipView.rightAnchor.constraint(equalTo: toolbarView.rightAnchor).isActive = true
-            accessoryClipView.topAnchor.constraint(equalTo: toolbarView.topAnchor).isActive = true
-            accessoryClipView.heightAnchor.constraint(equalTo: toolbarView.heightAnchor).isActive = true
+            accessoryClipView.topAnchor.constraint(equalTo: titlebarView.topAnchor).isActive = true
+            accessoryClipView.heightAnchor.constraint(equalToConstant: TitlebarTabsVenturaTerminalWindow.compactTitlebarHeight).isActive = true
             accessoryClipView.needsLayout = true
 
             accessoryView.translatesAutoresizingMaskIntoConstraints = false
@@ -445,6 +580,25 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
 
             self?.hideToolbarOverflowButton()
             self?.hideTitleBarSeparators()
+
+            // Apply the compact titlebar height now that the tab bar is set up.
+            // This catches the initial layout that layoutIfNeeded() may miss
+            // on first boot with restored tab state.
+            self?.forceTitlebarHeight()
+
+            // Counteract the safe area inset that AppKit computes from the
+            // 38pt toolbar even though the visible titlebar is only 28pt.
+            // The content view doesn't actually overlap the titlebar, so
+            // the reported safe area is spurious. This must be done here
+            // (outside the layout cycle) to avoid SIGABRT.
+            if let hostingView = self?.contentView?.subviews.first {
+                let systemTop = hostingView.safeAreaInsets.top
+                if systemTop > 0 {
+                    hostingView.additionalSafeAreaInsets = NSEdgeInsets(
+                        top: -systemTop, left: 0, bottom: 0, right: 0)
+                }
+            }
+
         }
     }
 

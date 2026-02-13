@@ -821,6 +821,21 @@ palette: Palette = .{},
 ///   * ` ` (blank)
 ///   * `true`
 ///   * `false`
+/// Sets the style of the cursor when the terminal surface is not focused.
+/// If this is set to `none`, the cursor will be hidden when unfocused.
+///
+/// The default value of `block_hollow` matches the behavior of most other
+/// terminal emulators.
+///
+/// Valid values are:
+///
+///   * `block`
+///   * `bar`
+///   * `underline`
+///   * `block_hollow`
+///   * `none`
+@"cursor-style-unfocused": CursorStyleUnfocused = .block_hollow,
+
 @"cursor-style-blink": ?bool = null,
 
 /// The color of the text under the cursor. If this is not set, a default will
@@ -5083,6 +5098,25 @@ pub const WindowPaddingColor = enum {
     background,
     extend,
     @"extend-always",
+};
+
+pub const CursorStyleUnfocused = enum {
+    bar,
+    block,
+    underline,
+    block_hollow,
+    none,
+
+    /// Convert to a renderer cursor style, or null if hidden.
+    pub fn toRendererStyle(self: CursorStyleUnfocused) ?@import("../renderer/cursor.zig").Style {
+        return switch (self) {
+            .bar => .bar,
+            .block => .block,
+            .underline => .underline,
+            .block_hollow => .block_hollow,
+            .none => null,
+        };
+    }
 };
 
 pub const WindowSubtitle = enum {
