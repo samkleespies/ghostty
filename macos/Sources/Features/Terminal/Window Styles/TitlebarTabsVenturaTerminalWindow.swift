@@ -192,17 +192,56 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
 
         // Update our titlebar color. Prefer the renderer-reported top-row
         // color (from TUI apps that paint cell backgrounds) over the static
-        // config/OSC background color. Also make the titlebar transparent
-        // so no system material/vibrancy composites on top of our color.
+        // config/OSC background color. Transparent titlebar prevents the
+        // system from drawing its own material/vibrancy background.
         titlebarAppearsTransparent = true
+
+        // Determine the base titlebar color.
+        var baseColor: NSColor
         if let surface = terminalController?.focusedSurface,
            let topRowColor = surface.titlebarColor {
-            titlebarColor = topRowColor
+            baseColor = topRowColor
         } else if let preferredBackgroundColor {
-            titlebarColor = preferredBackgroundColor
+            baseColor = preferredBackgroundColor
         } else {
-            titlebarColor = derivedConfig.backgroundColor.withAlphaComponent(derivedConfig.backgroundOpacity)
+            baseColor = derivedConfig.backgroundColor.withAlphaComponent(derivedConfig.backgroundOpacity)
         }
+
+        // When the window is transparent (background-opacity < 1), apply the
+        // same opacity to the titlebar and tab backgrounds so they inherit
+        // the blur/transparency effect from the window. All adjustments are
+        // non-destructive (alphaValue) and fully reversible.
+        if !isOpaque {
+            let alpha = surfaceConfig.backgroundOpacity.clamped(to: 0.001...1)
+            baseColor = baseColor.withAlphaComponent(alpha)
+
+            // Make tab button backgrounds semi-transparent so the window-level
+            // blur shows through the tab area, not just the gaps between tabs.
+            if let titlebarContainer {
+                for tabButton in titlebarContainer.descendants(withClassName: "NSTabButton") {
+                    if let bgView = tabButton.firstDescendant(withID: "_backgroundView") {
+                        bgView.alphaValue = CGFloat(alpha)
+                    }
+                }
+                if let newTabButton = titlebarContainer.firstDescendant(withClassName: "NSTabBarNewTabButton") {
+                    newTabButton.alphaValue = CGFloat(alpha)
+                }
+            }
+        } else {
+            // Restore full opacity on tab backgrounds when window is opaque.
+            if let titlebarContainer {
+                for tabButton in titlebarContainer.descendants(withClassName: "NSTabButton") {
+                    if let bgView = tabButton.firstDescendant(withID: "_backgroundView") {
+                        bgView.alphaValue = 1.0
+                    }
+                }
+                if let newTabButton = titlebarContainer.firstDescendant(withClassName: "NSTabBarNewTabButton") {
+                    newTabButton.alphaValue = 1.0
+                }
+            }
+        }
+
+        titlebarColor = baseColor
 
         if (isOpaque || themeChanged) {
             // If there is transparency, calling this will make the titlebar opaque
