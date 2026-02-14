@@ -227,6 +227,10 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
                     newTabButton.alphaValue = CGFloat(alpha)
                 }
             }
+
+            // Match the window buttons backdrop opacity to the tab backgrounds
+            // so the area behind the traffic lights blends consistently.
+            windowButtonsBackdrop?.alphaValue = CGFloat(alpha)
         } else {
             // Restore full opacity on tab backgrounds when window is opaque.
             if let titlebarContainer {
@@ -239,6 +243,7 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
                     newTabButton.alphaValue = 1.0
                 }
             }
+            windowButtonsBackdrop?.alphaValue = 1.0
         }
 
         titlebarColor = baseColor
@@ -766,7 +771,12 @@ fileprivate class WindowButtonsBackdropView: NSView {
 				let backgroundColor = terminalWindow.hasVeryDarkBackground ? titlebarBackgroundColor : systemOverlayColor
 
                 overlayLayer.isHidden = true
-				layer?.backgroundColor = isHighlighted ? highlightedColor?.cgColor : backgroundColor?.cgColor
+
+                if isHighlighted {
+                    layer?.backgroundColor = highlightedColor?.cgColor
+                } else {
+                    layer?.backgroundColor = backgroundColor?.cgColor
+                }
             }
         }
     }
