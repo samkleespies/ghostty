@@ -23587,9 +23587,8 @@ simdutf_warn_unused bool implementation::validate_utf32(const char32_t *buf, siz
 
 simdutf_warn_unused result implementation::validate_utf32_with_errors(const char32_t *buf, size_t len) const noexcept {
 
-    const char32_t* end = len >= 16 ? buf + len - 16 : nullptr;
     const char32_t* buf_orig = buf;
-    while (buf <= end) {
+    while (len - size_t(buf - buf_orig) >= 16) {
       __m512i utf32 = _mm512_loadu_si512((const __m512i*)buf);
       __mmask16 outside_range = _mm512_cmp_epu32_mask(utf32, _mm512_set1_epi32(0x10ffff),
                                 _MM_CMPINT_GT);
@@ -23606,8 +23605,8 @@ simdutf_warn_unused result implementation::validate_utf32_with_errors(const char
       }
       buf += 16;
     }
-    if(buf < buf_orig + len) {
-      __m512i utf32 = _mm512_maskz_loadu_epi32(__mmask16((1<<(buf_orig + len - buf))-1),(const __m512i*)buf);
+    if(size_t(buf - buf_orig) < len) {
+      __m512i utf32 = _mm512_maskz_loadu_epi32(__mmask16((1 << (len - size_t(buf - buf_orig)))-1),(const __m512i*)buf);
       __mmask16 outside_range = _mm512_cmp_epu32_mask(utf32, _mm512_set1_epi32(0x10ffff),
                                 _MM_CMPINT_GT);
       if (outside_range) {

@@ -1,0 +1,24 @@
+name: Native security regression tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: PNG and image resizing
+        run: |
+          cc -g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -Isrc/stb tests/native-security/stb.c -lm -o /tmp/stb-test
+          /tmp/stb-test
+      - name: SIMD text conversion
+        run: |
+          c++ -std=c++17 -g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer tests/native-security/simdutf.cpp pkg/simdutf/vendor/simdutf.cpp -o /tmp/simdutf-test
+          /tmp/simdutf-test

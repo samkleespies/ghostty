@@ -1,3 +1,6 @@
+permissions:
+  contents: read
+
 name: Update iTerm2 colorschemes
 on:
   schedule:
