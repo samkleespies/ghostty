@@ -1,3 +1,6 @@
+permissions:
+  contents: read
+
 on:
   push: {}
   pull_request: {}
@@ -405,6 +408,9 @@ jobs:
             ghostty-source.tar.gz
 
   trigger-snap:
+    permissions:
+      contents: read
+      actions: write
     if: github.event_name != 'pull_request'
     runs-on: namespace-profile-ghostty-xsm
     needs: [build-dist, build-snap]
@@ -423,6 +429,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trigger-flatpak:
+    permissions:
+      contents: read
+      actions: write
     if: github.event_name != 'pull_request'
     runs-on: namespace-profile-ghostty-xsm
     needs: [build-dist, build-flatpak]

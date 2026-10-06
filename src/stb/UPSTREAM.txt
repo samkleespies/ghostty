@@ -1,0 +1,4 @@
+stb_image.h and stb_image_resize2.h: https://github.com/nothings/stb/tree/2c980bb59875b0d32144a71867fbdebb2f77cd20
+The compatibility header preserves the stbir_resize_uint8 entry point and independent alpha-channel filtering.
+Local patches: checked 16-bit format-conversion allocation; legacy resize dimension/stride validation.
+Use memcpy for the resizer's four-byte pixel stores so unaligned rows are valid C.

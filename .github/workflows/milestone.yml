@@ -1,3 +1,6 @@
+permissions:
+  contents: read
+
 # Description:
 #   - Add milestone to a merged PR automatically
 #   - Add milestone to a closed issue that has a merged PR fix (if any)
@@ -11,6 +14,9 @@ on:
 
 jobs:
   update-milestone:
+    permissions:
+      issues: write
+      pull-requests: write
     runs-on: namespace-profile-ghostty-sm
     name: Milestone Update
     steps:

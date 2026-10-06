@@ -1,3 +1,6 @@
+permissions:
+  contents: read
+
 on:
   workflow_run:
     workflows: [Test]
@@ -66,6 +69,8 @@ jobs:
           fi
 
   tag:
+    permissions:
+      contents: write
     runs-on: namespace-profile-ghostty-sm
     needs: [setup, build-macos]
     if: needs.setup.outputs.should_skip != 'true'
@@ -148,6 +153,8 @@ jobs:
           sentry-cli dif upload --project ghostty --wait dsym.zip
 
   source-tarball:
+    permissions:
+      contents: write
     needs: [setup]
     if: |
       needs.setup.outputs.should_skip != 'true' &&
@@ -202,6 +209,8 @@ jobs:
           token: ${{ secrets.GH_RELEASE_TOKEN }}
 
   build-macos:
+    permissions:
+      contents: write
     needs: [setup]
     if: |
       needs.setup.outputs.should_skip != 'true' &&
@@ -445,6 +454,8 @@ jobs:
           retention-days: 2
 
   build-macos-debug-slow:
+    permissions:
+      contents: write
     needs: [setup]
     if: |
       needs.setup.outputs.should_skip != 'true' &&
@@ -629,6 +640,8 @@ jobs:
           echo "  Debug Symbols: https://tip.files.ghostty.org/${GHOSTTY_COMMIT_LONG}/ghostty-macos-universal-debug-slow-dsym.zip"
 
   build-macos-debug-fast:
+    permissions:
+      contents: write
     needs: [setup]
     if: |
       needs.setup.outputs.should_skip != 'true' &&
