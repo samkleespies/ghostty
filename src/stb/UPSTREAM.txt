@@ -2,3 +2,5 @@ stb_image.h and stb_image_resize2.h: https://github.com/nothings/stb/tree/2c980b
 The compatibility header preserves the stbir_resize_uint8 entry point and independent alpha-channel filtering.
 Local patches: checked 16-bit format-conversion allocation; legacy resize dimension/stride validation.
 Use memcpy for the resizer's four-byte pixel stores so unaligned rows are valid C.
+Keep allocation-size fields and products in size_t, and bound the compatibility API to Ghostty's existing 131072-pixel PNG dimension limit.
+Select indexed gather callbacks (rather than decayed arrays) to avoid a GCC object-size sanitizer diagnostic for in-bounds table access.

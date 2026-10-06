@@ -26,6 +26,9 @@ int stbir_resize_uint8(const unsigned char *input, int input_w, int input_h,
     }
     if (!input || !output || input_w <= 0 || input_h <= 0 || output_w <= 0 || output_h <= 0)
         return 0;
+    // Match Ghostty's PNG dimension limit and bound filter-support arithmetic.
+    if (input_w > 131072 || input_h > 131072 || output_w > 131072 || output_h > 131072)
+        return 0;
     // The legacy API uses int dimensions/strides; reject unrepresentable buffers.
     if (input_w > INT_MAX / channels || output_w > INT_MAX / channels)
         return 0;

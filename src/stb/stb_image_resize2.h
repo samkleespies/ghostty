@@ -954,14 +954,14 @@ typedef struct
   int filter_pixel_width;
   int filter_pixel_margin;
   int num_contributors;
-  int contributors_size;
-  int coefficients_size;
+  size_t contributors_size;
+  size_t coefficients_size;
   stbir__filter_extent_info extent_info;
   int is_gather;  // 0 = scatter, 1 = gather with scale >= 1, 2 = gather with scale < 1
   int gather_prescatter_num_contributors;
   int gather_prescatter_coefficient_width;
-  int gather_prescatter_contributors_size;
-  int gather_prescatter_coefficients_size;
+  size_t gather_prescatter_contributors_size;
+  size_t gather_prescatter_coefficients_size;
 } stbir__sampler;
 
 typedef struct
@@ -3589,7 +3589,7 @@ static void stbir__cleanup_gathered_coefficients( stbir_edge edge, stbir__filter
       ++cur_contribs;
       ++prev_contribs;
     }
-    stbir_overlapping_memcpy( coefficient_group + numerator * coefficient_width, coefficient_group, ( num_contributors - numerator ) * coefficient_width * sizeof( coeffs[ 0 ] ) );
+    stbir_overlapping_memcpy( coefficient_group + numerator * coefficient_width, coefficient_group, (size_t)( num_contributors - numerator ) * coefficient_width * sizeof( coeffs[ 0 ] ) );
   }
 
   coeffs = coefficient_group;
@@ -4685,7 +4685,7 @@ static void stbir__decode_scanline(stbir__info const * stbir_info, int n, float 
         int x = start_x[e];
         float * marg = full_decode_buffer + x * effective_channels;
         float const * src = full_decode_buffer + stbir__edge_wrap(edge_horizontal, x, input_full_size) * effective_channels;
-        STBIR_MEMCPY( marg, src, margin * effective_channels * sizeof(float) );
+        STBIR_MEMCPY( marg, src, (size_t)margin * effective_channels * sizeof(float) );
         if ( e == 1 ) last_decoded = marg + margin * effective_channels;
       }
     }
@@ -6639,7 +6639,7 @@ static void stbir__set_sampler(stbir__sampler * samp, stbir_filter filter, stbir
   samp->num_contributors = stbir__get_contributors(samp, samp->is_gather);
 
   samp->contributors_size = samp->num_contributors * sizeof(stbir__contributors);
-  samp->coefficients_size = samp->num_contributors * samp->coefficient_width * sizeof(float) + sizeof(float)*STBIR_INPUT_CALLBACK_PADDING; // extra sizeof(float) is padding
+  samp->coefficients_size = (size_t)samp->num_contributors * samp->coefficient_width * sizeof(float) + sizeof(float)*STBIR_INPUT_CALLBACK_PADDING; // extra sizeof(float) is padding
 
   samp->gather_prescatter_contributors = 0;
   samp->gather_prescatter_coefficients = 0;
@@ -6648,7 +6648,7 @@ static void stbir__set_sampler(stbir__sampler * samp, stbir_filter filter, stbir
     samp->gather_prescatter_coefficient_width = samp->filter_pixel_width;
     samp->gather_prescatter_num_contributors  = stbir__get_contributors(samp, 2);
     samp->gather_prescatter_contributors_size = samp->gather_prescatter_num_contributors * sizeof(stbir__contributors);
-    samp->gather_prescatter_coefficients_size = samp->gather_prescatter_num_contributors * samp->gather_prescatter_coefficient_width * sizeof(float);
+    samp->gather_prescatter_coefficients_size = (size_t)samp->gather_prescatter_num_contributors * samp->gather_prescatter_coefficient_width * sizeof(float);
   }
 }
 
@@ -7101,7 +7101,7 @@ static stbir__info * stbir__alloc_internal_mem_and_build_samplers( stbir__sample
   // sometimes read one float off in some of the unrolled loops (with a weight of zero coeff, so it doesn't have an effect)
   //   we use a few extra floats instead of just 1, so that input callback buffer can overlap with the decode buffer without
   //   the conversion routines overwriting the callback input data.
-  decode_buffer_size = ( conservative->n1 - conservative->n0 + 1 ) * effective_channels * sizeof(float) + sizeof(float)*STBIR_INPUT_CALLBACK_PADDING; // extra floats for input callback stagger
+  decode_buffer_size = (size_t)( conservative->n1 - conservative->n0 + 1 ) * effective_channels * sizeof(float) + sizeof(float)*STBIR_INPUT_CALLBACK_PADDING; // extra floats for input callback stagger
 
 #if defined( STBIR__SEPARATE_ALLOCATIONS ) && defined(STBIR_SIMD8)
   if ( effective_channels == 3 )
